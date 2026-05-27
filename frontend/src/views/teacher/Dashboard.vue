@@ -29,18 +29,26 @@
     </div>
 
     <!-- 阶段完成率 -->
-    <div class="card" v-if="stageKeys.length">
+    <div class="card" v-if="stageDetails.length">
       <h2>各阶段完成率</h2>
+      <p class="section-hint">
+        平均进度口径：所有会话在该阶段已发消息数（单会话最多按门槛计算，不超额）÷ 门槛 × 总会话数。<br />
+        例：3 个会话该阶段各发 1 条、门槛 3 → 3 / (3×3) = 33.33%。门槛在"系统配置 → 阶段完成门槛"调整。
+      </p>
       <p v-if="allStagesZero" class="empty-data-warn">
-        所有阶段完成率均为 0 — 通常是 Dify workflow 未在 <code>node_finished</code> / <code>workflow_finished</code> 事件中输出 <code>current_stage</code>。请检查 Dify 工作流配置。
+        所有阶段完成率均为 0 — 通常是 Dify workflow 未在 <code>node_finished</code> / <code>workflow_finished</code> 事件中输出 <code>current_stage</code>，或还没有学生在该阶段发消息。
       </p>
       <div class="stage-bars">
-        <div v-for="key in stageKeys" :key="key" class="bar-row">
-          <span class="bar-label">{{ key }}</span>
+        <div v-for="s in stageDetails" :key="s.stage_key" class="bar-row">
+          <span class="bar-label" :title="s.stage_key">{{ s.stage_name }}</span>
           <div class="bar-track">
-            <div class="bar-fill" :style="{ width: (stats.stage_completion_rate?.[key] || 0) * 100 + '%' }"></div>
+            <div class="bar-fill" :style="{ width: (s.rate || 0) * 100 + '%' }"></div>
           </div>
-          <span class="bar-value">{{ Math.round((stats.stage_completion_rate?.[key] || 0) * 100) }}%</span>
+          <span class="bar-value">{{ ((s.rate || 0) * 100).toFixed(2) }}%</span>
+          <span class="bar-extra">
+            {{ s.messages_counted }} / {{ s.messages_needed }} 条消息
+            <em v-if="s.messages_actual > s.messages_counted">（实际 {{ s.messages_actual }}，超额未计）</em>
+          </span>
         </div>
       </div>
     </div>
@@ -106,13 +114,14 @@ const stats = ref({
   total_sessions: 0,
   average_score: 0,
   stage_completion_rate: {},
+  stage_completion_detail: [],
   daily_active_users: [],
 })
 
-const stageKeys = computed(() => Object.keys(stats.value.stage_completion_rate || {}))
+const stageDetails = computed(() => stats.value.stage_completion_detail || [])
 const allStagesZero = computed(() =>
-  stageKeys.value.length > 0 &&
-  stageKeys.value.every((k) => (stats.value.stage_completion_rate?.[k] || 0) === 0)
+  stageDetails.value.length > 0 &&
+  stageDetails.value.every((s) => (s.rate || 0) === 0)
 )
 
 function formatDate(dateStr) {
@@ -178,4 +187,7 @@ onMounted(() => {
 .recalc-msg.ok { background: #e8f5e9; color: #2e7d32; }
 .recalc-msg.warn { background: #fff8e1; color: #b26500; }
 .recalc-msg.err { background: #fdeaea; color: #c62828; }
+.section-hint { color: #6b7280; font-size: 12.5px; line-height: 1.6; margin: 0 0 14px; }
+.bar-extra { color: #6b7280; font-size: 12px; margin-left: 12px; }
+.bar-extra em { color: #9ca3af; font-style: normal; margin-left: 4px; }
 </style>

@@ -76,7 +76,7 @@ class LearningWorkflow(models.Model):
     name = models.CharField(max_length=200, verbose_name='流程名称')
     description = models.TextField(blank=True, verbose_name='描述')
     teacher = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         related_name='workflows', verbose_name='所属教师'
     )
     dify_app_id = models.CharField(max_length=100, blank=True, verbose_name='Dify应用ID')

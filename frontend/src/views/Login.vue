@@ -17,9 +17,6 @@
           {{ loading ? '登录中...' : '登录' }}
         </button>
       </form>
-      <p class="link-text">
-        还没有账号？<router-link to="/register">立即注册</router-link>
-      </p>
     </div>
   </div>
 </template>
@@ -49,7 +46,7 @@ async function handleLogin() {
     localStorage.setItem('access_token', data.access_token)
     localStorage.setItem('refresh_token', data.refresh_token)
     userStore.setUser(data)
-    router.push(data.role === 'teacher' || data.role === 'admin' ? '/teacher/dashboard' : '/chat')
+    router.push(data.role === 'teacher' ? '/teacher/dashboard' : data.role === 'admin' ? '/admin/dashboard' : '/chat')
   } catch (e) {
     error.value = e.response?.data?.error || '登录失败，请重试'
   } finally {

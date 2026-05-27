@@ -41,11 +41,11 @@ export function updateScoringConfig(payload) {
 }
 
 export function getDifyConfig(reveal = false) {
-  return client.get('/teacher/dify-config/', { params: reveal ? { reveal: 1 } : {} })
+  return client.get('/admin/dify-config/', { params: reveal ? { reveal: 1 } : {} })
 }
 
 export function updateDifyConfig(payload) {
-  return client.put('/teacher/dify-config/', payload)
+  return client.put('/admin/dify-config/', payload)
 }
 
 export function getWorkflowStages() {

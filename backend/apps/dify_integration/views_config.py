@@ -1,4 +1,4 @@
-"""教师端 Dify 平台配置读写接口。"""
+"""管理员 Dify 平台配置读写接口（仅 admin 角色）。"""
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -7,7 +7,7 @@ from .models import DifyConfig
 
 
 def _is_admin(user):
-    return user.is_authenticated and user.role in ('teacher', 'admin')
+    return user.is_authenticated and user.role == 'admin'
 
 
 def _mask_key(key):

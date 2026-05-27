@@ -5,7 +5,12 @@ import { getProfile } from '../api/auth'
 export const useUserStore = defineStore('user', () => {
   const user = ref(null)
   const isLoggedIn = computed(() => !!user.value)
-  const isTeacher = computed(() => user.value?.role === 'teacher' || user.value?.role === 'admin')
+  const role = computed(() => user.value?.role || '')
+  const isStudent = computed(() => role.value === 'student')
+  const isTeacher = computed(() => role.value === 'teacher')
+  const isAdmin = computed(() => role.value === 'admin')
+  // 兼容旧代码：以前 isTeacher 同时覆盖 admin
+  const isTeacherOrAdmin = computed(() => isTeacher.value || isAdmin.value)
 
   function setUser(data) {
     user.value = data
@@ -34,5 +39,5 @@ export const useUserStore = defineStore('user', () => {
     import('./chat').then(({ useChatStore }) => useChatStore().reset())
   }
 
-  return { user, isLoggedIn, isTeacher, setUser, fetchProfile, logout }
+  return { user, isLoggedIn, role, isStudent, isTeacher, isAdmin, isTeacherOrAdmin, setUser, fetchProfile, logout }
 })

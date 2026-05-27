@@ -144,16 +144,49 @@ def teacher_stats_view(request):
 
     avg_score = StudentScore.objects.aggregate(avg=Avg('auto_total_score'))['avg'] or 0
 
-    # 各阶段完成率
-    stage_completion = {}
+    # 各阶段完成率 —— 平均进度口径（per-session cap）：
+    # rate = Σ_session min(该阶段 ChatLog 数, 门槛) / (门槛 × 总会话数)
+    # 例：3 个会话该阶段各发 1 条、门槛 3 → 3 / (3*3) = 33.33%
+    # 单个会话即便发了 5 条也只按 3 条计，避免被超额会话拉高。
     from apps.dify_integration.models import WorkflowStage
-    stages = WorkflowStage.objects.all()
+    from apps.chat_logs.models import ChatLog
+    from django.db.models import Count
+
+    stage_completion = {}            # 兼容旧调用方：{stage_key: rate}
+    stage_completion_detail = []     # 含中文名、门槛、累计消息数等
+
+    stages = WorkflowStage.objects.select_related('workflow').order_by('order_index')
     for stage in stages:
-        total = ConversationSession.objects.filter(
-            completed_stages__icontains=stage.stage_key
-        ).count()
-        rate = round(total / max(total_sessions, 1), 2)
+        threshold = max(int(stage.expected_min_messages), 1)
+        if total_sessions == 0:
+            rate = 0.0
+            sum_capped = 0
+            actual_total = 0
+            completed = 0
+        else:
+            per_session_counts = list(
+                ChatLog.objects.filter(stage_key=stage.stage_key)
+                .values('session_id')
+                .annotate(c=Count('id'))
+            )
+            actual_total = sum(row['c'] for row in per_session_counts)
+            sum_capped = sum(min(row['c'], threshold) for row in per_session_counts)
+            denominator = threshold * total_sessions
+            rate = round(sum_capped / denominator, 4) if denominator else 0.0
+            completed = sum(1 for row in per_session_counts if row['c'] >= threshold)
         stage_completion[stage.stage_key] = rate
+        stage_completion_detail.append({
+            'stage_key': stage.stage_key,
+            'stage_name': stage.name,
+            'order_index': stage.order_index,
+            'expected_min_messages': threshold,
+            'completed_sessions': completed,        # 仍然报告"达标会话数"作为参考
+            'total_sessions': total_sessions,
+            'messages_counted': sum_capped,         # 用于显示的"分子"
+            'messages_needed': threshold * total_sessions,  # 用于显示的"分母"
+            'messages_actual': actual_total,        # 实际消息总数（不 cap）
+            'rate': rate,
+        })
 
     # 每日活跃用户（近7天）
     from django.utils import timezone
@@ -172,6 +205,7 @@ def teacher_stats_view(request):
         'total_sessions': total_sessions,
         'average_score': round(float(avg_score), 1),
         'stage_completion_rate': stage_completion,
+        'stage_completion_detail': stage_completion_detail,
         'daily_active_users': daily_active,
     })
 
