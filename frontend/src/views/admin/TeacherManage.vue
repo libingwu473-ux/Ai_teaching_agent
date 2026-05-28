@@ -1,96 +1,99 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <router-link to="/admin/dashboard" class="back-link">← 返回管理员控制台</router-link>
-      <h1>教师管理</h1>
+  <div class="app-page">
+    <div class="app-page-header">
+      <div>
+        <h1 class="app-page-title">教师管理</h1>
+        <p class="app-page-subtitle">管理可登录后台的教师账号，停用即软删除（保留历史数据）</p>
+      </div>
+      <el-button type="primary" @click="openCreate"><el-icon style="margin-right: 4px;"><Plus /></el-icon>新增教师</el-button>
     </div>
 
-    <section class="card">
-      <div class="toolbar">
-        <input v-model="search" placeholder="搜索用户名/姓名" class="search" @keyup.enter="load" />
-        <label class="check-line"><input type="checkbox" v-model="includeInactive" @change="load" /> 含已停用</label>
-        <button class="btn-primary" @click="openCreate">+ 新增教师</button>
+    <div class="app-card">
+      <div class="app-toolbar">
+        <el-input
+          v-model="search"
+          placeholder="搜索用户名 / 姓名"
+          clearable
+          style="width: 280px;"
+          @keyup.enter="load"
+          @clear="load"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-checkbox v-model="includeInactive" @change="load">含已停用</el-checkbox>
       </div>
 
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>用户名</th><th>姓名</th><th>邮箱</th><th>已管理班级</th><th>状态</th><th>最近登录</th><th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in teachers" :key="t.id">
-            <td>{{ t.username }}</td>
-            <td>{{ t.display_name }}</td>
-            <td>{{ t.email || '—' }}</td>
-            <td>{{ t.managed_class_count }}</td>
-            <td><span :class="['badge', t.is_active ? 'ok' : 'off']">{{ t.is_active ? '启用' : '停用' }}</span></td>
-            <td>{{ t.last_login ? formatDate(t.last_login) : '—' }}</td>
-            <td class="actions-cell">
-              <button class="link-btn" @click="openEdit(t)">编辑</button>
-              <button class="link-btn" @click="openReset(t)">重置密码</button>
-              <button v-if="t.is_active" class="link-btn danger" @click="deactivate(t)">停用</button>
-              <button v-else class="link-btn" @click="reactivate(t)">启用</button>
-            </td>
-          </tr>
-          <tr v-if="!teachers.length"><td colspan="7" class="empty">暂无数据</td></tr>
-        </tbody>
-      </table>
-      <p v-if="error" class="err-msg">{{ error }}</p>
-    </section>
-
-    <!-- 创建/编辑弹窗 -->
-    <div v-if="modal.show" class="modal-mask" @click.self="modal.show = false">
-      <div class="modal">
-        <h3>{{ modal.mode === 'create' ? '新增教师' : '编辑教师' }}</h3>
-        <div class="field">
-          <label>用户名（登录账号）</label>
-          <input v-model="modal.form.username" :disabled="modal.mode === 'edit'" />
-        </div>
-        <div class="field" v-if="modal.mode === 'create'">
-          <label>初始密码（≥6 位）</label>
-          <input v-model="modal.form.password" type="text" />
-        </div>
-        <div class="field">
-          <label>姓名（显示名）</label>
-          <input v-model="modal.form.display_name" />
-        </div>
-        <div class="field">
-          <label>邮箱（可选）</label>
-          <input v-model="modal.form.email" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn-secondary" @click="modal.show = false">取消</button>
-          <button class="btn-primary" :disabled="modal.saving" @click="submitModal">
-            {{ modal.saving ? '保存中...' : '保存' }}
-          </button>
-        </div>
-        <p v-if="modal.error" class="err-msg">{{ modal.error }}</p>
-      </div>
+      <el-table
+        :data="teachers"
+        v-loading="loading"
+        empty-text="暂无教师"
+        stripe
+        style="width: 100%"
+      >
+        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="display_name" label="姓名" min-width="120" />
+        <el-table-column prop="email" label="邮箱" min-width="160" :formatter="(r) => r.email || '—'" />
+        <el-table-column prop="managed_class_count" label="管理班级" width="100" align="center" />
+        <el-table-column label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <span :class="['app-badge', row.is_active ? 'is-success' : 'is-gray']">
+              {{ row.is_active ? '启用' : '停用' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="最近登录" min-width="160">
+          <template #default="{ row }">{{ row.last_login ? formatDate(row.last_login) : '—' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button link type="primary" @click="openReset(row)">重置密码</el-button>
+            <el-button v-if="row.is_active" link type="danger" @click="deactivate(row)">停用</el-button>
+            <el-button v-else link type="primary" @click="reactivate(row)">启用</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </div>
 
-    <!-- 重置密码弹窗 -->
-    <div v-if="reset.show" class="modal-mask" @click.self="reset.show = false">
-      <div class="modal">
-        <h3>重置密码：{{ reset.target?.username }}</h3>
-        <div class="field">
-          <label>新密码（≥6 位）</label>
-          <input v-model="reset.newPassword" type="text" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn-secondary" @click="reset.show = false">取消</button>
-          <button class="btn-primary" :disabled="reset.saving" @click="submitReset">
-            {{ reset.saving ? '提交中...' : '确认重置' }}
-          </button>
-        </div>
-        <p v-if="reset.error" class="err-msg">{{ reset.error }}</p>
-      </div>
-    </div>
+    <!-- 创建 / 编辑 -->
+    <el-dialog v-model="modal.show" :title="modal.mode === 'create' ? '新增教师' : '编辑教师'" width="460px">
+      <el-form ref="modalFormRef" :model="modal.form" :rules="modalRules" label-width="90px" label-position="right">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="modal.form.username" :disabled="modal.mode === 'edit'" placeholder="登录账号" />
+        </el-form-item>
+        <el-form-item v-if="modal.mode === 'create'" label="初始密码" prop="password">
+          <el-input v-model="modal.form.password" placeholder="≥6 位，建议要求首次登录改密" />
+        </el-form-item>
+        <el-form-item label="姓名" prop="display_name">
+          <el-input v-model="modal.form.display_name" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="modal.form.email" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="modal.show = false">取消</el-button>
+        <el-button type="primary" :loading="modal.saving" @click="submitModal">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 重置密码 -->
+    <el-dialog v-model="reset.show" title="重置密码" width="420px">
+      <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 14px;">
+        将重置教师 <strong>{{ reset.target?.username }}</strong> 的密码
+      </p>
+      <el-input v-model="reset.newPassword" placeholder="新密码 ≥6 位" show-password />
+      <template #footer>
+        <el-button @click="reset.show = false">取消</el-button>
+        <el-button type="primary" :loading="reset.saving" @click="submitReset">确认重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   listTeachers, createTeacher, updateTeacher, deactivateTeacher, resetTeacherPassword,
 } from '../../api/admin'
@@ -98,56 +101,65 @@ import {
 const teachers = ref([])
 const search = ref('')
 const includeInactive = ref(false)
-const error = ref('')
+const loading = ref(false)
 
-const modal = reactive({ show: false, mode: 'create', saving: false, error: '', form: {} })
-const reset = reactive({ show: false, target: null, newPassword: '', saving: false, error: '' })
+const modalFormRef = ref(null)
+const modal = reactive({ show: false, mode: 'create', saving: false, form: {} })
+const reset = reactive({ show: false, target: null, newPassword: '', saving: false })
+
+const modalRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, min: 6, message: '密码至少 6 位', trigger: 'blur' }],
+  display_name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+}
 
 function formatDate(s) { return s ? new Date(s).toLocaleString('zh-CN') : '' }
 
 async function load() {
+  loading.value = true
   try {
     const params = {}
     if (search.value.trim()) params.search = search.value.trim()
     if (includeInactive.value) params.include_inactive = 1
     const resp = await listTeachers(params)
     teachers.value = resp.data.data || []
-    error.value = ''
   } catch (e) {
-    error.value = e.response?.data?.error || e.message
+    ElMessage.error(e.response?.data?.error || e.message)
+  } finally {
+    loading.value = false
   }
 }
 
 function openCreate() {
   modal.mode = 'create'
   modal.form = { username: '', password: '', display_name: '', email: '' }
-  modal.error = ''
   modal.show = true
 }
-
 function openEdit(t) {
   modal.mode = 'edit'
   modal.form = { id: t.id, username: t.username, display_name: t.display_name, email: t.email }
-  modal.error = ''
   modal.show = true
 }
 
 async function submitModal() {
+  if (!modalFormRef.value) return
+  const valid = await modalFormRef.value.validate().catch(() => false)
+  if (!valid) return
   modal.saving = true
-  modal.error = ''
   try {
     if (modal.mode === 'create') {
       await createTeacher(modal.form)
+      ElMessage.success('教师已创建')
     } else {
       await updateTeacher(modal.form.id, {
-        display_name: modal.form.display_name,
-        email: modal.form.email,
+        display_name: modal.form.display_name, email: modal.form.email,
       })
+      ElMessage.success('已保存')
     }
     modal.show = false
     await load()
   } catch (e) {
-    modal.error = e.response?.data?.error || e.message
+    ElMessage.error(e.response?.data?.error || e.message)
   } finally {
     modal.saving = false
   }
@@ -156,76 +168,47 @@ async function submitModal() {
 function openReset(t) {
   reset.target = t
   reset.newPassword = ''
-  reset.error = ''
   reset.show = true
 }
-
 async function submitReset() {
+  if (!reset.newPassword || reset.newPassword.length < 6) {
+    ElMessage.warning('新密码至少 6 位')
+    return
+  }
   reset.saving = true
-  reset.error = ''
   try {
     await resetTeacherPassword(reset.target.id, reset.newPassword)
+    ElMessage.success(`已重置 ${reset.target.username} 的密码`)
     reset.show = false
   } catch (e) {
-    reset.error = e.response?.data?.error || e.message
+    ElMessage.error(e.response?.data?.error || e.message)
   } finally {
     reset.saving = false
   }
 }
 
 async function deactivate(t) {
-  if (!confirm(`确认停用教师 ${t.display_name || t.username}？停用后该教师无法登录，但已有班级与历史记录保留。`)) return
   try {
+    await ElMessageBox.confirm(
+      `确认停用教师 ${t.display_name || t.username}？停用后该教师无法登录，已有班级与历史记录保留。`,
+      '停用确认', { type: 'warning' }
+    )
     await deactivateTeacher(t.id)
+    ElMessage.success('已停用')
     await load()
   } catch (e) {
-    alert(e.response?.data?.error || e.message)
+    if (e !== 'cancel') ElMessage.error(e.response?.data?.error || e.message || '操作失败')
   }
 }
-
 async function reactivate(t) {
   try {
     await updateTeacher(t.id, { is_active: true })
+    ElMessage.success('已启用')
     await load()
   } catch (e) {
-    alert(e.response?.data?.error || e.message)
+    ElMessage.error(e.response?.data?.error || e.message)
   }
 }
 
 onMounted(load)
 </script>
-
-<style scoped>
-.page { max-width: 1100px; margin: 0 auto; padding: 24px 32px 48px; height: 100%; overflow-y: auto; }
-.page-header { margin-bottom: 20px; }
-.back-link { display: inline-block; margin-bottom: 8px; color: #4a90d9; text-decoration: none; font-size: 13px; }
-.back-link:hover { text-decoration: underline; }
-.page-header h1 { margin: 0; font-size: 22px; color: #1f2937; font-weight: 600; }
-.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; }
-.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-.search { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
-.check-line { font-size: 13px; color: #4b5563; display: flex; align-items: center; gap: 6px; }
-.btn-primary { background: #4a90d9; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-.btn-primary:hover:not(:disabled) { background: #357abd; }
-.btn-primary:disabled { opacity: 0.55; }
-.btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
-.data-table { width: 100%; border-collapse: collapse; }
-.data-table th, .data-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f2f5; font-size: 14px; }
-.data-table th { background: #fafbfc; color: #6b7280; font-weight: 500; }
-.actions-cell { display: flex; gap: 8px; flex-wrap: wrap; }
-.link-btn { background: none; border: none; color: #4a90d9; cursor: pointer; padding: 0; font-size: 13px; }
-.link-btn:hover { text-decoration: underline; }
-.link-btn.danger { color: #b91c1c; }
-.badge { padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-.badge.ok { background: #ecfdf5; color: #047857; }
-.badge.off { background: #fef2f2; color: #b91c1c; }
-.empty { text-align: center; color: #9ca3af; padding: 24px; }
-.err-msg { color: #b91c1c; font-size: 13px; margin-top: 10px; }
-.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal { background: #fff; padding: 24px; border-radius: 10px; width: 420px; max-width: 90vw; }
-.modal h3 { margin: 0 0 16px; font-size: 16px; color: #1f2937; }
-.modal .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.modal .field label { font-size: 13px; color: #374151; font-weight: 500; }
-.modal .field input { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
-</style>
