@@ -3,7 +3,7 @@
     <div class="app-page-header">
       <div>
         <h1 class="app-page-title">管理员控制台</h1>
-        <p class="app-page-subtitle">超级管理员可在此管理教师账号、专业字典和 Dify 平台配置</p>
+        <p class="app-page-subtitle">超级管理员可在此管理教师账号和 Dify 平台配置</p>
       </div>
     </div>
 
@@ -28,11 +28,10 @@
 
 <script setup>
 import { markRaw } from 'vue'
-import { UserFilled, Reading, Connection, ArrowRight } from '@element-plus/icons-vue'
+import { UserFilled, Connection, ArrowRight } from '@element-plus/icons-vue'
 
 const cards = [
   { path: '/admin/teachers',    title: '教师管理',  desc: '新增、停用、重置教师账号密码',           icon: markRaw(UserFilled), bg: '#dbeafe' },
-  { path: '/admin/majors',      title: '专业管理',  desc: '维护学校专业字典',                       icon: markRaw(Reading),    bg: '#dcfce7' },
   { path: '/admin/dify-config', title: 'Dify 平台配置', desc: 'API 地址、API Key、SSL 校验等',     icon: markRaw(Connection), bg: '#fef3c7' },
 ]
 </script>

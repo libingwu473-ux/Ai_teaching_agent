@@ -9,6 +9,4 @@ urlpatterns = [
     path('teachers/', views_admin.admin_teachers_view, name='admin-teachers'),
     path('teachers/<int:teacher_id>/', views_admin.admin_teacher_detail_view, name='admin-teacher-detail'),
     path('teachers/<int:teacher_id>/reset-password/', views_admin.admin_teacher_reset_password_view, name='admin-teacher-reset-password'),
-    path('majors/', views_admin.admin_majors_view, name='admin-majors'),
-    path('majors/<int:major_id>/', views_admin.admin_major_detail_view, name='admin-major-detail'),
 ]

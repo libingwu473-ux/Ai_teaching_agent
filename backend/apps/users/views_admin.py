@@ -1,4 +1,4 @@
-"""管理员（admin 角色）端点：教师管理、专业管理、Dify 配置。
+"""管理员（admin 角色）端点：教师管理、Dify 配置。
 
 权限要求：仅 role == 'admin' 的认证用户。
 """
@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Major, SchoolClass
+from .models import SchoolClass
 
 User = get_user_model()
 
@@ -33,18 +33,6 @@ def _serialize_teacher(t):
         'date_joined': t.date_joined.isoformat() if t.date_joined else None,
         'last_login': t.last_login.isoformat() if t.last_login else None,
         'managed_class_count': t.managed_classes.filter(is_active=True).count(),
-    }
-
-
-def _serialize_major(m):
-    return {
-        'id': m.id,
-        'code': m.code,
-        'name': m.name,
-        'description': m.description,
-        'is_active': m.is_active,
-        'class_count': m.classes.filter(is_active=True).count(),
-        'created_at': m.created_at.isoformat() if m.created_at else None,
     }
 
 
@@ -142,60 +130,3 @@ def admin_teacher_reset_password_view(request, teacher_id):
     teacher.must_change_password = True
     teacher.save(update_fields=['password', 'must_change_password'])
     return JsonResponse({'success': True})
-
-
-# --------- 专业 CRUD ---------
-
-@api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
-def admin_majors_view(request):
-    err = _require_admin(request)
-    if err:
-        return err
-
-    if request.method == 'GET':
-        qs = Major.objects.all().order_by('code')
-        include_inactive = request.GET.get('include_inactive') == '1'
-        if not include_inactive:
-            qs = qs.filter(is_active=True)
-        return JsonResponse({'data': [_serialize_major(m) for m in qs]})
-
-    data = request.data
-    code = (data.get('code') or '').strip()
-    name = (data.get('name') or '').strip()
-    description = (data.get('description') or '').strip()
-    if not code or not name:
-        return JsonResponse({'error': 'code 和 name 必填'}, status=400)
-    if Major.objects.filter(code=code).exists():
-        return JsonResponse({'error': '专业代码已存在'}, status=400)
-    m = Major.objects.create(code=code, name=name, description=description)
-    return JsonResponse(_serialize_major(m), status=201)
-
-
-@api_view(['PUT', 'DELETE'])
-@permission_classes([IsAuthenticated])
-def admin_major_detail_view(request, major_id):
-    err = _require_admin(request)
-    if err:
-        return err
-
-    m = Major.objects.filter(id=major_id).first()
-    if not m:
-        return JsonResponse({'error': '专业不存在'}, status=404)
-
-    if request.method == 'DELETE':
-        if m.classes.filter(is_active=True).exists():
-            return JsonResponse({'error': '该专业下仍有启用中的班级，无法停用'}, status=400)
-        m.is_active = False
-        m.save(update_fields=['is_active'])
-        return JsonResponse({'success': True})
-
-    data = request.data
-    if 'name' in data:
-        m.name = (data['name'] or '').strip()
-    if 'description' in data:
-        m.description = (data['description'] or '').strip()
-    if 'is_active' in data:
-        m.is_active = bool(data['is_active'])
-    m.save()
-    return JsonResponse(_serialize_major(m))

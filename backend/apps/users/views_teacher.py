@@ -46,6 +46,18 @@ def _get_owned_class(user, class_id):
     return qs.first()
 
 
+def _serialize_major(m):
+    return {
+        'id': m.id,
+        'code': m.code,
+        'name': m.name,
+        'description': m.description,
+        'is_active': m.is_active,
+        'class_count': m.classes.filter(is_active=True).count(),
+        'created_at': m.created_at.isoformat() if m.created_at else None,
+    }
+
+
 def _serialize_class(c):
     return {
         'id': c.id,
@@ -90,6 +102,62 @@ def teacher_majors_view(request):
         for m in Major.objects.filter(is_active=True).order_by('code')
     ]
     return JsonResponse({'data': data})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def teacher_majors_manage_view(request):
+    """教师端专业管理：列表 / 新增。"""
+    err = _require_teacher(request)
+    if err:
+        return err
+
+    if request.method == 'GET':
+        qs = Major.objects.all().order_by('code')
+        if request.GET.get('include_inactive') != '1':
+            qs = qs.filter(is_active=True)
+        return JsonResponse({'data': [_serialize_major(m) for m in qs]})
+
+    data = request.data
+    code = (data.get('code') or '').strip()
+    name = (data.get('name') or '').strip()
+    description = (data.get('description') or '').strip()
+    if not code or not name:
+        return JsonResponse({'error': 'code 和 name 必填'}, status=400)
+    if Major.objects.filter(code=code).exists():
+        return JsonResponse({'error': '专业代码已存在'}, status=400)
+    m = Major.objects.create(code=code, name=name, description=description)
+    return JsonResponse(_serialize_major(m), status=201)
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def teacher_major_detail_view(request, major_id):
+    """教师端专业管理：编辑 / 停用 / 启用。"""
+    err = _require_teacher(request)
+    if err:
+        return err
+
+    m = Major.objects.filter(id=major_id).first()
+    if not m:
+        return JsonResponse({'error': '专业不存在'}, status=404)
+
+    if request.method == 'DELETE':
+        if m.classes.filter(is_active=True).exists():
+            return JsonResponse({'error': '该专业下仍有启用中的班级，无法停用'}, status=400)
+        m.is_active = False
+        m.save(update_fields=['is_active'])
+        return JsonResponse({'success': True})
+
+    data = request.data
+    if 'name' in data:
+        m.name = (data['name'] or '').strip()
+    if 'description' in data:
+        m.description = (data['description'] or '').strip()
+    if 'is_active' in data:
+        m.is_active = bool(data['is_active'])
+    m.save()
+    return JsonResponse(_serialize_major(m))
 
 
 @api_view(['GET', 'POST'])

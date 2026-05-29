@@ -17,6 +17,20 @@ export function listMajorsReadonly() {
   return client.get('/teacher/majors-readonly/')
 }
 
+// 专业（教师端管理）
+export function listMajors(params = {}) {
+  return client.get('/teacher/majors/', { params })
+}
+export function createMajor(data) {
+  return client.post('/teacher/majors/', data)
+}
+export function updateMajor(id, data) {
+  return client.put(`/teacher/majors/${id}/`, data)
+}
+export function deactivateMajor(id) {
+  return client.delete(`/teacher/majors/${id}/`)
+}
+
 // 班级下的学生
 export function listClassStudents(classId, params = {}) {
   return client.get(`/teacher/classes/${classId}/class-students/`, { params })

@@ -20,22 +20,43 @@ def _is_teacher(user):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def teacher_student_list_view(request):
-    """教师查看学生列表"""
+    """教师查看学生列表
+
+    支持过滤：
+      - search: 按 学号/姓名/邮箱 模糊匹配
+      - class_id: 限定到具体班级
+      - major_id: 限定到某专业下的所有班级
+    teacher 角色仅能看到自己 managed_classes 名下的学生；admin 看全局。
+    """
     if not _is_teacher(request.user):
         return JsonResponse({'error': '权限不足'}, status=403)
 
-    students = User.objects.filter(role='student').annotate(
+    students = User.objects.filter(role='student').select_related(
+        'school_class', 'school_class__major',
+    ).annotate(
         total_sessions=Count('sessions'),
         avg_score=Avg('scores__auto_total_score'),
     )
 
-    search = request.GET.get('search', '')
+    # 仅教师本人 managed_classes 下的学生（admin 不限制）
+    if request.user.role == 'teacher':
+        students = students.filter(school_class__teacher=request.user)
+
+    search = request.GET.get('search', '').strip()
     if search:
         students = students.filter(
             Q(username__icontains=search) |
             Q(display_name__icontains=search) |
             Q(email__icontains=search)
         )
+
+    class_id = request.GET.get('class_id')
+    if class_id:
+        students = students.filter(school_class_id=class_id)
+
+    major_id = request.GET.get('major_id')
+    if major_id:
+        students = students.filter(school_class__major_id=major_id)
 
     data = []
     for s in students:
@@ -45,6 +66,10 @@ def teacher_student_list_view(request):
             'username': s.username,
             'email': s.email,
             'display_name': s.display_name,
+            'class_id': s.school_class_id,
+            'class_name': s.school_class.name if s.school_class_id else None,
+            'major_id': s.school_class.major_id if s.school_class_id else None,
+            'major_name': s.school_class.major.name if s.school_class_id else None,
             'total_sessions': s.total_sessions,
             'average_score': round(float(s.avg_score or 0), 1),
             'last_active': last_session.updated_at.isoformat() if last_session else None,

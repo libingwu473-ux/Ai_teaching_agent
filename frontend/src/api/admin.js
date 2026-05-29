@@ -16,17 +16,3 @@ export function deactivateTeacher(id) {
 export function resetTeacherPassword(id, newPassword) {
   return client.post(`/admin/teachers/${id}/reset-password/`, { new_password: newPassword })
 }
-
-// 专业 CRUD
-export function listMajors(params = {}) {
-  return client.get('/admin/majors/', { params })
-}
-export function createMajor(data) {
-  return client.post('/admin/majors/', data)
-}
-export function updateMajor(id, data) {
-  return client.put(`/admin/majors/${id}/`, data)
-}
-export function deactivateMajor(id) {
-  return client.delete(`/admin/majors/${id}/`)
-}

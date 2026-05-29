@@ -82,22 +82,52 @@
     <!-- 学生列表 -->
     <div class="app-card">
       <h2 class="app-card-title">学生列表</h2>
-      <div class="app-toolbar">
+      <div class="app-toolbar" style="gap: 12px; flex-wrap: wrap;">
         <el-input
           v-model="searchQuery"
-          placeholder="搜索学生姓名/邮箱..."
-          style="width: 280px;"
+          placeholder="搜索学号/姓名/邮箱..."
+          style="width: 260px;"
           clearable
           @input="loadStudents"
+          @clear="loadStudents"
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
+        <el-select
+          v-model="majorFilter"
+          placeholder="全部专业"
+          style="width: 180px;"
+          clearable
+          @change="onMajorChange"
+        >
+          <el-option v-for="m in majorOptions" :key="m.id" :label="m.name" :value="m.id" />
+        </el-select>
+        <el-select
+          v-model="classFilter"
+          placeholder="全部班级"
+          style="width: 200px;"
+          clearable
+          @change="loadStudents"
+        >
+          <el-option
+            v-for="c in filteredClassOptions"
+            :key="c.id"
+            :label="`${c.major_name} / ${c.name}`"
+            :value="c.id"
+          />
+        </el-select>
       </div>
       <el-table :data="students" empty-text="暂无学生" stripe style="width: 100%">
-        <el-table-column label="姓名" min-width="140">
+        <el-table-column prop="username" label="学号" width="120" />
+        <el-table-column label="姓名" min-width="120">
           <template #default="{ row }">{{ row.display_name || row.username }}</template>
         </el-table-column>
-        <el-table-column prop="email" label="邮箱" min-width="160" :formatter="(r) => r.email || '—'" />
+        <el-table-column label="专业" min-width="140">
+          <template #default="{ row }">{{ row.major_name || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="班级" min-width="120">
+          <template #default="{ row }">{{ row.class_name || '—' }}</template>
+        </el-table-column>
         <el-table-column prop="total_sessions" label="会话数" width="90" align="center" />
         <el-table-column label="平均评分" width="110" align="center">
           <template #default="{ row }">
@@ -121,8 +151,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getStudents, getStats, recalculateAllScores } from '../../api/teacher'
+import { listClasses, listMajorsReadonly } from '../../api/teacherClasses'
 
 const searchQuery = ref('')
+const majorFilter = ref(null)
+const classFilter = ref(null)
+const majorOptions = ref([])
+const classOptions = ref([])
 const students = ref([])
 const recalculating = ref(false)
 const stats = ref({
@@ -135,6 +170,11 @@ const allStagesZero = computed(() =>
   stageDetails.value.length > 0 && stageDetails.value.every((s) => (s.rate || 0) === 0)
 )
 
+const filteredClassOptions = computed(() => {
+  if (!majorFilter.value) return classOptions.value
+  return classOptions.value.filter((c) => c.major_id === majorFilter.value)
+})
+
 function formatDate(s) { return s ? new Date(s).toLocaleDateString('zh-CN') : '--' }
 function scoreClass(s) {
   if (s >= 90) return 'score-excellent'
@@ -143,9 +183,23 @@ function scoreClass(s) {
   return 'score-fail'
 }
 
+function onMajorChange() {
+  // 切换专业时，如果当前选中班级不属于该专业，清空班级
+  if (classFilter.value) {
+    const c = classOptions.value.find((x) => x.id === classFilter.value)
+    if (!c || (majorFilter.value && c.major_id !== majorFilter.value)) {
+      classFilter.value = null
+    }
+  }
+  loadStudents()
+}
+
 async function loadStudents() {
   try {
-    const resp = await getStudents({ search: searchQuery.value })
+    const params = { search: searchQuery.value }
+    if (classFilter.value) params.class_id = classFilter.value
+    if (majorFilter.value) params.major_id = majorFilter.value
+    const resp = await getStudents(params)
     students.value = resp.data.data || []
   } catch (e) { ElMessage.error(e.response?.data?.error || e.message) }
 }
@@ -153,6 +207,13 @@ async function loadStats() {
   try {
     const resp = await getStats()
     stats.value = resp.data
+  } catch (e) { /* ignore */ }
+}
+async function loadFilters() {
+  try {
+    const [classResp, majorResp] = await Promise.all([listClasses(), listMajorsReadonly()])
+    classOptions.value = classResp.data.data || []
+    majorOptions.value = majorResp.data.data || []
   } catch (e) { /* ignore */ }
 }
 
@@ -172,5 +233,5 @@ async function recalcAll() {
   }
 }
 
-onMounted(() => { loadStats(); loadStudents() })
+onMounted(() => { loadStats(); loadFilters(); loadStudents() })
 </script>

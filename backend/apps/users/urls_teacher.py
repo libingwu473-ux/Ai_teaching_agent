@@ -10,6 +10,8 @@ from . import views_teacher
 
 urlpatterns = [
     path('majors-readonly/', views_teacher.teacher_majors_view, name='teacher-majors-readonly'),
+    path('majors/', views_teacher.teacher_majors_manage_view, name='teacher-majors'),
+    path('majors/<int:major_id>/', views_teacher.teacher_major_detail_view, name='teacher-major-detail'),
     path('classes/', views_teacher.teacher_classes_view, name='teacher-classes'),
     path('classes/<int:class_id>/', views_teacher.teacher_class_detail_view, name='teacher-class-detail'),
     path('classes/<int:class_id>/class-students/', views_teacher.teacher_class_students_view, name='teacher-class-students'),

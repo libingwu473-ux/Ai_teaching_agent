@@ -60,7 +60,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listMajors, createMajor, updateMajor, deactivateMajor } from '../../api/admin'
+import { listMajors, createMajor, updateMajor, deactivateMajor } from '../../api/teacherClasses'
 
 const majors = ref([])
 const includeInactive = ref(false)

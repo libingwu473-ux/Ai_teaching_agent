@@ -111,12 +111,12 @@ const roleLabel = computed(() => ({ admin: '管理员', teacher: '教师', stude
 const adminMenu = [
   { path: '/admin/dashboard', label: '控制台', icon: markRaw(Odometer) },
   { path: '/admin/teachers',  label: '教师管理', icon: markRaw(UserFilled) },
-  { path: '/admin/majors',    label: '专业管理', icon: markRaw(Reading) },
   { path: '/admin/dify-config', label: 'Dify 配置', icon: markRaw(Connection) },
 ]
 const teacherMenu = [
   { path: '/teacher/dashboard', label: '仪表盘', icon: markRaw(DataAnalysis) },
   { path: '/teacher/classes',   label: '班级管理', icon: markRaw(School) },
+  { path: '/teacher/majors',    label: '专业管理', icon: markRaw(Reading) },
   { path: '/teacher/settings',  label: '评分设置', icon: markRaw(Setting) },
 ]
 

@@ -61,6 +61,12 @@ const routes = [
         component: () => import('../views/teacher/Settings.vue'),
         meta: { role: 'teacher' },
       },
+      {
+        path: 'teacher/majors',
+        name: 'TeacherMajors',
+        component: () => import('../views/teacher/MajorManage.vue'),
+        meta: { role: 'teacher' },
+      },
       // 管理员端
       {
         path: 'admin/dashboard',
@@ -72,12 +78,6 @@ const routes = [
         path: 'admin/teachers',
         name: 'AdminTeachers',
         component: () => import('../views/admin/TeacherManage.vue'),
-        meta: { role: 'admin' },
-      },
-      {
-        path: 'admin/majors',
-        name: 'AdminMajors',
-        component: () => import('../views/admin/MajorManage.vue'),
         meta: { role: 'admin' },
       },
       {
